@@ -6,16 +6,25 @@ export const recipeSlice = createSlice( {
   initialState: {
     allRecipes: null,
     recipeById: null,
+    requestStatus: '',
   },
   reducers: {
     setAllRecipes: ( state, { payload } ) => {
       state.allRecipes = payload;
     },
-    setById: ( state, { payload } ) => {
+    setRecipeById: ( state, { payload } ) => {
       state.recipeById = payload;
+    },
+    changeRequestStatus: ( state, { payload } ) => {
+      state.requestStatus = payload;
+    },
+    cleanStoreRecipes: ( state ) => {
+      state.allRecipes = null;
     },
   },
 } );
 
-export const { setAllRecipes, setById } = recipeSlice.actions;
+export const {
+  setAllRecipes, setRecipeById, cleanStoreRecipes, changeRequestStatus,
+} = recipeSlice.actions;
 export default recipeSlice.reducer;

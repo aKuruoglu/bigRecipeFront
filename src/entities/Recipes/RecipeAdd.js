@@ -1,22 +1,30 @@
 import React from 'react';
-
+import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
-import RecipeForm from '../../components/forms/RecipeForm';
-import WrapChanges from '../../components/WrapChanges';
-import { addRecipe } from '../../redux/recipe/actions';
+import { useHistory } from 'react-router-dom';
 
-const RecipeAdd = () => {
+import WrapSimple from '../../components/WrapSimple';
+import { addRecipe } from '../../redux/recipe/actions';
+import RecipeForm from './components/RecipeForm';
+
+const RecipeAdd = ( { addRecipeCall } ) => {
+  const history = useHistory();
   const onSubmit = ( values ) => {
-    console.log( values );
+    addRecipeCall( values );
+    history.push( '/recipe' );
   };
 
   return (
-    <WrapChanges>
+    <WrapSimple>
       <RecipeForm
         onSubmit={ onSubmit }
       />
-    </WrapChanges>
+    </WrapSimple>
   );
+};
+
+RecipeAdd.propTypes = {
+  addRecipeCall: PropTypes.func.isRequired,
 };
 
 export default connect( null, {

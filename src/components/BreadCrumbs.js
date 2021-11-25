@@ -1,25 +1,41 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
 import { get } from 'lodash';
+import { useHistory } from 'react-router-dom';
 
-const BreadCrumbs = ( { recipeById, crumbsArray } ) => {
+const BreadCrumbs = ( { entityById, crumbsArray, entity } ) => {
+  const history = useHistory();
   const [bread, setBread] = useState();
+
+  const moveToCategoryId = useCallback( ( id ) => ( ) => {
+    history.push( `/${ entity }/category/${ id }` );
+  }, [entity, history] );
+
   useEffect( () => {
-    if ( !get( recipeById, 'categoryId', null ) ) {
+    if ( !get( entityById, 'categoryId', null ) ) {
       return;
     }
 
-    let category = crumbsArray.find( ( item ) => item._id === recipeById.categoryId );
+    let category = crumbsArray[entityById.categoryId];
     const res = [];
 
     while ( category ) {
-      res.unshift( ( <div key={ category._id } className="breadcrumb-item">{category.name}</div> ) );
+      res.unshift(
+        ( <div
+          key={ category._id }
+          className="breadcrumb-item crumbs"
+          onClick={ moveToCategoryId( category._id ) }
+        >
+          {category.name}
+        </div> ),
+      );
 
       category = category.parent;
     }
 
     setBread( res );
-  }, [crumbsArray, recipeById] );
+  }, [crumbsArray, moveToCategoryId, entityById] );
   return (
     <div className="d-flex mt-2 breadcrumb">
       {bread}
@@ -27,7 +43,12 @@ const BreadCrumbs = ( { recipeById, crumbsArray } ) => {
   );
 };
 
-export default connect( ( state ) => ( {
-  recipeById: state.recipe.recipeById,
+BreadCrumbs.propTypes = {
+  crumbsArray: PropTypes.objectOf( PropTypes.object ).isRequired,
+  entity: PropTypes.string.isRequired,
+};
+
+export default connect( ( state, { entity } ) => ( {
+  entityById: get( state, `${ entity }.${ entity }ById` ),
   crumbsArray: state.category.breadCrumbsTree,
 } ), null )( BreadCrumbs );

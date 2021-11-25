@@ -1,47 +1,97 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
+import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
-import { useHistory } from 'react-router-dom';
+import { get } from 'lodash';
 import { Button } from 'react-bootstrap';
 import ReactPaginate from 'react-paginate';
+import { useHistory, useParams } from 'react-router-dom';
 
-import WrapMain from '../../components/WrapMain';
-import RecipeItem from './components/RecipeItem';
-import { getAllRecipes } from '../../redux/recipe/actions';
 import './recipe.css';
-import config from '../../config';
+import { pageLimit } from '../../config';
+import WrapMain from '../../components/WrapMain';
+import EntityItem from '../../components/EntityItem';
+import {
+  deleteRecipe, getAllRecipes, getRecipesByCategory,
+} from '../../redux/recipe/actions';
+import { changeRequestStatus, cleanStoreRecipes } from '../../redux/recipe/slice';
 
-const Recipe = ( { allRecipeCall, allRecipes } ) => {
+const Recipe = ( {
+  allRecipeCall,
+  getRecipesByCategoryCall,
+  allRecipes,
+  allRecipesInStore,
+  deleteRecipeCall,
+  cleanStoreRecipesCall,
+  status,
+  changeStatus,
+} ) => {
   const history = useHistory();
-  const { pageLimit } = config;
-  const [currentPage, setCurrentPage] = useState( 1 );
-  const changePage = ( { selected } ) => {
-    const page = selected + 1;
-    setCurrentPage( page );
-  };
-  const moveToAddPage = () => {
-    history.push( '/recipe/add' );
-  };
-  useEffect( () => {
-    allRecipeCall( {
-      page: currentPage,
-      limit: pageLimit,
-    } );
-  }, [allRecipeCall, currentPage, pageLimit] );
+  const name = 'recipe';
+  const { catId, page = 1 } = useParams();
 
-  if ( !allRecipes ) {
+  const currentPage = +page - 1;
+
+  const changePage = ( { selected } ) => {
+    const pageNumber = +selected + 1;
+    if ( pageNumber !== +page ) {
+      if ( !catId ) {
+        history.push( `/${ name }/page/${ pageNumber }` );
+      } else {
+        history.push( `/${ name }/category/${ catId }/page/${ pageNumber }` );
+      }
+    }
+  };
+
+  const moveToAddPage = () => {
+    history.push( `/${ name }/add` );
+  };
+
+  useEffect( () => {
+    if ( status === 'success' ) {
+      changeStatus( '' );
+      return;
+    }
+
+    if ( !catId ) {
+      allRecipeCall( {
+        page: currentPage,
+        limit: pageLimit,
+      } );
+    } else {
+      getRecipesByCategoryCall( catId, currentPage, pageLimit );
+    }
+  }, [allRecipeCall, catId, getRecipesByCategoryCall, currentPage, status, changeStatus] );
+
+  if ( !allRecipesInStore ) {
     return null;
   }
 
   const { entities, total } = allRecipes;
-  const pageCount = Math.ceil( total / pageLimit - 1 );
+
+  let pageCount;
+  if ( total > 10 ) {
+    pageCount = Math.ceil( total / pageLimit - 1 );
+  } else {
+    pageCount = 1;
+  }
 
   return (
-    <WrapMain>
+    <WrapMain entity={ name }>
       <div className="p-2">
         <Button onClick={ moveToAddPage }>Add recipe</Button>
       </div>
       <div>
-        {entities && entities.map( ( item ) => <RecipeItem item={ item } key={ item._id } /> )}
+        {get( entities, 'length', 0 ) > 0
+          ? entities.map( ( item ) => (
+            <EntityItem
+              item={ item }
+              key={ item._id }
+              entity={ name }
+              deleteEntityCall={ deleteRecipeCall }
+              cleanStoreEntityCall={ cleanStoreRecipesCall }
+            />
+          ) )
+          : <p className="text-center mb-5">Data do not exist</p>}
       </div>
       <div className="mt-3 d-flex justify-content-center">
         <ReactPaginate
@@ -50,11 +100,13 @@ const Recipe = ( { allRecipeCall, allRecipes } ) => {
           breakLabel="..."
           breakClassName="break-me"
           pageCount={ pageCount }
-          marginPagesDisplayed={ 2 }
+          marginPagesDisplayed={ 3 }
           pageRangeDisplayed={ 3 }
           onPageChange={ changePage }
           containerClassName="pagination"
           activeClassName="active"
+          initialPage={ currentPage }
+          forcePage={ currentPage }
         />
       </div>
 
@@ -62,8 +114,33 @@ const Recipe = ( { allRecipeCall, allRecipes } ) => {
   );
 };
 
+Recipe.propTypes = {
+  allRecipes: PropTypes.shape( {
+    entities: PropTypes.arrayOf( PropTypes.shape( {
+      _id: PropTypes.string,
+      title: PropTypes.string,
+      description: PropTypes.string,
+      categoryId: PropTypes.string,
+    } ) ),
+    total: PropTypes.number,
+  } ).isRequired,
+  allRecipesInStore: PropTypes.bool.isRequired,
+  status: PropTypes.string.isRequired,
+  allRecipeCall: PropTypes.func.isRequired,
+  getRecipesByCategoryCall: PropTypes.func.isRequired,
+  deleteRecipeCall: PropTypes.func.isRequired,
+  cleanStoreRecipesCall: PropTypes.func.isRequired,
+  changeStatus: PropTypes.func.isRequired,
+};
+
 export default connect( ( state ) => ( {
-  allRecipes: state.recipe.allRecipes,
+  allRecipes: state.recipe.allRecipes ? state.recipe.allRecipes : {},
+  allRecipesInStore: !!state.recipe.allRecipes,
+  status: state.recipe.requestStatus,
 } ), {
   allRecipeCall: getAllRecipes,
+  getRecipesByCategoryCall: getRecipesByCategory,
+  deleteRecipeCall: deleteRecipe,
+  cleanStoreRecipesCall: cleanStoreRecipes,
+  changeStatus: changeRequestStatus,
 } )( Recipe );
